@@ -21,4 +21,26 @@ def get_current_session(
 
 
 def get_current_user(auth_session: AuthSession = Depends(get_current_session)) -> User:
-    return auth_session.user
+    user = auth_session.user
+    if (
+        user is not None
+        and auth_session.account_id is not None
+        and auth_session.account_id != user.account_id
+    ):
+        raise UnauthorizedError(
+            "session_account_mismatch",
+            "This local identity is unavailable. Sign in again.",
+        )
+    account = getattr(user, "account", None)
+    if (
+        user is None
+        or user.status != "active"
+        or not user.console_access_enabled
+        or account is None
+        or account.status != "active"
+    ):
+        raise UnauthorizedError(
+            "identity_unavailable",
+            "This local identity is unavailable. Sign in again.",
+        )
+    return user

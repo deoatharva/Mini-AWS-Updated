@@ -117,3 +117,35 @@
 ### Initial scaffold
 
 - Created initial project scaffold and documentation.
+
+### Phase 10-13 — Identity & Access Management (IAM-001, 2026-11-19)
+
+- Added `accounts`, IAM user columns, `groups`, `group_memberships`, `policies`,
+  `group_policy_attachments`, and `audit_logs` to the existing SQLite metadata
+  schema, with account-scoped unique constraints and indexes.
+- Added an in-place forward migration/backfill for legacy owner-only databases,
+  preserving existing users and resources and assigning 12-digit Local Account
+  IDs.
+- Added IAM login (`POST /auth/iam/login`), login throttling, generic failure
+  messages, disabled-identity rejection, and mandatory first-login password
+  change (`POST /auth/change-password`).
+- Added a centralized action registry and built-in policies
+  (`AdministratorAccess`, `ReadOnlyAccess`, `ComputeAccess`, `StorageAccess`,
+  `DatabaseAccess`, `IAMReadOnlyAccess`, `IAMManagementAccess`).
+- Added `require_permission` enforcement to every existing resource endpoint and
+  all IAM endpoints, with deny-by-default IAM authorization, HTTP 403 responses,
+  account isolation, owner safety, and self-escalation protection.
+- Added IAM user, group, membership, policy, attachment, overview, and audit
+  APIs plus validated custom policies.
+- Added the IAM console: overview, users (list/create/edit), groups
+  (list/create/detail with members and policies), policies (list/details/custom
+  create-edit-delete), audit log, IAM sign-in, forced password change, and
+  permission-aware navigation.
+- Added a confirmation dialog before detaching a group policy; cancelling leaves
+  the policy attached.
+- Added `.account-id-row` and `.modal-search` styles for the account ID copy row
+  and modal search fields.
+- Added IAM/migration backend tests and IAM frontend workflow tests.
+- Verified on 2026-11-19: 63 backend tests, 39 frontend tests, successful
+  production build, clean moderate-level npm audit, and a verified backup of the
+  live metadata database.

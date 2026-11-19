@@ -74,6 +74,12 @@ export function AuthProvider({ children }) {
     [completeAuthentication],
   );
 
+  const loginIam = useCallback(
+    async (credentials) =>
+      completeAuthentication(await api.auth.iamLogin(credentials)),
+    [completeAuthentication],
+  );
+
   const register = useCallback(
     async (details) => completeAuthentication(await api.auth.register(details)),
     [completeAuthentication],
@@ -84,6 +90,32 @@ export function AuthProvider({ children }) {
     setUser(updated);
     return updated;
   }, []);
+
+  const refreshUser = useCallback(async () => {
+    const currentUser = await api.auth.me();
+    setUser(currentUser);
+    setStatus('authenticated');
+    return currentUser;
+  }, []);
+
+  const completeRequiredPasswordChange = useCallback(async (details) => {
+    const updated = await api.auth.changeRequiredPassword(details);
+    setUser(updated);
+    return updated;
+  }, []);
+
+  const hasPermission = useCallback(
+    (action) => {
+      if (!user) {
+        return false;
+      }
+      if (user.user_type !== 'IAM') {
+        return true;
+      }
+      return Array.isArray(user.permissions) && user.permissions.includes(action);
+    },
+    [user],
+  );
 
   const logout = useCallback(async () => {
     try {
@@ -100,12 +132,28 @@ export function AuthProvider({ children }) {
       user,
       status,
       isAuthenticated: status === 'authenticated',
+      isOwner: Boolean(user) && user.user_type !== 'IAM',
       login,
+      loginIam,
       register,
       updateProfile,
+      refreshUser,
+      completeRequiredPasswordChange,
+      hasPermission,
       logout,
     }),
-    [user, status, login, register, updateProfile, logout],
+    [
+      user,
+      status,
+      login,
+      loginIam,
+      register,
+      updateProfile,
+      refreshUser,
+      completeRequiredPasswordChange,
+      hasPermission,
+      logout,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

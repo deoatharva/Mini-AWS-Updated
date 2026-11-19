@@ -1,5 +1,5 @@
-import { Cloud } from 'lucide-react';
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Cloud, ShieldOff } from 'lucide-react';
+import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthContext.jsx';
 import { getReturnPath } from '../utils/navigation.js';
@@ -20,7 +20,7 @@ function SessionLoading() {
 }
 
 export function ProtectedRoute() {
-  const { status } = useAuth();
+  const { status, user } = useAuth();
   const location = useLocation();
 
   if (status === 'loading') {
@@ -31,11 +31,18 @@ export function ProtectedRoute() {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
+  if (
+    user?.must_change_password &&
+    location.pathname !== '/account/change-password'
+  ) {
+    return <Navigate to="/account/change-password" replace />;
+  }
+
   return <Outlet />;
 }
 
 export function PublicOnlyRoute() {
-  const { status } = useAuth();
+  const { status, user } = useAuth();
   const location = useLocation();
 
   if (status === 'loading') {
@@ -43,8 +50,36 @@ export function PublicOnlyRoute() {
   }
 
   if (status === 'authenticated') {
-    return <Navigate to={getReturnPath(location)} replace />;
+    return (
+      <Navigate
+        to={
+          user?.must_change_password
+            ? '/account/change-password'
+            : getReturnPath(location)
+        }
+        replace
+      />
+    );
   }
 
   return <Outlet />;
+}
+
+export function RequirePermission({ action, children }) {
+  const { hasPermission } = useAuth();
+
+  if (!hasPermission(action)) {
+    return (
+      <div className="section-panel access-denied-panel">
+        <ShieldOff size={30} aria-hidden="true" />
+        <h1>Access denied</h1>
+        <p>
+          Your IAM permissions do not allow <code>{action}</code>.
+        </p>
+        <Link to="/">Return to Console Home</Link>
+      </div>
+    );
+  }
+
+  return children;
 }

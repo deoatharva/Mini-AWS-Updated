@@ -370,3 +370,113 @@ ACTIVITY_E2E passed=18/18
 Cleanup confirmed: the 10 test events cascaded away with the temporary
 account, no activity rows remained, and port 8025 was closed.
 
+
+## 2026-11-19 — IAM-001 final verification and handoff
+
+Scope of this session: finish the group policy-detach confirmation workflow,
+add the cancellation test, confirm the missing styles exist, and re-run the
+full suites/build/audit. Backend IAM behavior was not changed.
+
+### Backend suite
+
+Command (from `backend/`):
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+```
+
+Result: **63 passed**, 1 warning, 104.29s.
+
+The warning is the non-failing
+`StarletteDeprecationWarning: Using httpx with starlette.testclient is deprecated`.
+The 63 tests include the 49 pre-IAM tests and 14 IAM/migration tests.
+
+### Frontend suite
+
+Command (from `frontend/`):
+
+```powershell
+npx vitest run
+```
+
+Result: **13 test files passed, 39 tests passed** (32.12s).
+
+`IAMGroupDetail.test.jsx` now has two tests:
+
+- detach with confirmation issues `DELETE /iam/groups/3/policies/2` and removes
+  the policy from the UI;
+- clicking Detach then Cancel closes the dialog, leaves
+  `ReadOnlyAccess` attached, and makes no DELETE request.
+
+The same suite also passes through the canonical script:
+`npm test` (which runs `vitest run`).
+
+### Production build and audit
+
+```powershell
+npm run build
+npm audit --audit-level=moderate
+```
+
+Result: Vite 6.4.6 built successfully (1623 modules; `dist/` created);
+`found 0 vulnerabilities`.
+
+### Database backup before migration
+
+The live `data/mini_aws.db` was copied with SQLite's online backup API to
+`data/backups/mini_aws.db.bak-2026-11-19`.
+
+Verification on the backup:
+
+```text
+PRAGMA integrity_check: ok
+tables: activity_events, application_deployments, auth_sessions, buckets,
+        compute_instances, database_resources, storage_objects, users
+row counts: activity_events=4, application_deployments=1, auth_sessions=1,
+            buckets=1, compute_instances=1, database_resources=0,
+            storage_objects=0, users=2
+```
+
+Source and backup are both 114688 bytes. SHA-256 differs because the SQLite
+backup API rewrites the database header/change counter; the integrity check and
+row counts above verify the contents. The live database was not overwritten or
+deleted, and no migration was applied to it in this session.
+
+### Section 13 real-server demonstration
+
+The full Section 13 demonstration previously passed against a real uvicorn
+server using `scripts/verify_iam_e2e.py` with an isolated temporary data
+directory. It was **not rerun** on 2026-11-19 because this session's changes were
+limited to a frontend test and documentation, which cannot affect backend
+behavior. Its verification remains valid.
+
+### Documentation review
+
+Root docs (`README.md`, `PRD.md`, `ARCHITECTURE.md`, `SECURITY.md`,
+`TESTING.md`, `TRACKER.md`) and agent files (`STATE.md`, `PLAN.md`,
+`CURRENT_TASK.md`, `DECISIONS.md`, `FILE_MAP.md`, `CHANGELOG.md`,
+`TEST_RESULTS.md`, `TRACKER.md`) were updated to distinguish completed IAM
+features from the documented limitations.
+
+### Migration dry run on a copy of the backup
+
+To prove the forward migration cannot lose existing data, the verified backup
+was copied to a temporary file, `init_db()` was run against that copy, and the
+copy was then deleted. The live database was untouched.
+
+```text
+before: users=2, compute_instances=1, application_deployments=1,
+        buckets=1, activity_events=4, auth_sessions=1
+after : identical counts (preserved=True)
+IAM tables created: accounts, audit_logs, iam_groups, group_memberships,
+                    group_policy_attachments, policies
+users: devik / devik -> account 839895681818 (OWNER, 12 digits)
+       sj / sjowner -> account 741770705124 (OWNER, 12 digits)
+null user.account_id: 0
+built-in policies seeded: 7
+PRAGMA foreign_key_check: no violations
+PRAGMA integrity_check: ok
+```
+
+The temporary migration copy and the accidentally created empty outside folder
+from the first attempt were removed.

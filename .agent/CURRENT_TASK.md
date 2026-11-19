@@ -1,34 +1,39 @@
 # Current Task
 
-Task: Durable activity history — complete.
+Task: IAM-001 end-to-end upgrade.
 
-Status: COMPLETE (verified 2026-11-16).
+Status: COMPLETE and verified (2026-11-19).
 
-Completed:
+Completed implementation:
 
-- Added an `activity_events` table with per-account service, action,
-  resource type/id/name, and timestamp.
-- Compute, application, storage, and database services record create, start,
-  stop, upload, deploy, failure, and delete events in the same transaction as
-  the resource change.
-- Dashboard activity now reads the durable log instead of deriving one event
-  per current resource, so history survives resource deletion.
-- Activity is limited to the 10 newest events per account, newest first.
-- Dashboard labels deletion events and states the feed is recorded actions.
-- Added 2 backend tests for persistence/ordering/limits/isolation and updated
-  dashboard/frontend tests.
+1. Accounts/IAM models, in-place legacy backfill, built-in policy seeding, and
+   unique 12-digit Local Account IDs.
+2. Owner and IAM authentication, generic failures, login throttling, mandatory
+   first-login password change, account-aware sessions, and audit events.
+3. Central action registry, `require_permission` on every endpoint, IAM
+   user/group/policy/attachment/audit APIs, account isolation, owner safety,
+   and self-escalation protection.
+4. IAM frontend routes/pages, permission-aware navigation, mandatory password
+   flow, dashboard, users, groups, policies, and audit log.
+5. Group policy detach confirmation dialog with a cancel path that keeps the
+   policy attached; `.account-id-row` and `.modal-search` styles present.
+6. Frontend and backend workflow tests, production build, and dependency audit.
 
-Verification totals:
+Verification (2026-11-19):
 
-- Backend: 49 passed (1 non-failing Starlette/httpx deprecation warning).
-- Frontend: 31 passed across 8 test files.
-- Production Vite build succeeds (1607 modules).
-- Live workflow: 18/18 checks passed; after deleting all five resources the
-  dashboard kept all 10 events, including deleted object and instance names,
-  while every count returned to zero.
-- Cleanup confirmed: temp account, its events, and server port removed.
+- Backend: 63 passed (1 non-failing Starlette/httpx deprecation warning).
+- Frontend: 13 files, 39 tests passed.
+- Production build: 1623 modules transformed successfully.
+- `npm audit --audit-level=moderate`: 0 vulnerabilities.
+- `data/mini_aws.db` backed up to
+  `data/backups/mini_aws.db.bak-2026-11-19` with `PRAGMA integrity_check = ok`
+  and matching row counts. The live database was not modified.
+- Migration dry run on a copy of that backup preserved every existing row,
+  created the IAM tables, backfilled both existing users into 12-digit local
+  accounts, seeded 7 built-in policies, and passed `foreign_key_check` and
+  `integrity_check`. The temporary copy was deleted.
+- The Section 13 real-server demonstration passed in the prior verification
+  session; not rerun because this session changed only a frontend test and
+  documentation.
 
-Remaining optional work:
-
-- VirtualBox compute adapter, only if VirtualBox is installed.
-- Further hardening beyond the intentional local-learning scope.
+No commits or pushes were made. Do not commit unless explicitly requested.

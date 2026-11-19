@@ -6,10 +6,14 @@ a real AWS account or a production cloud platform.
 
 ## Current status
 
-All five console services are implemented and tested against real local
-resources:
+All console services, including the IAM module, are implemented and tested
+against real local resources:
 
 - Local account registration, login, sessions, and logout
+- Identity & Access Management (IAM): accounts with a 12-digit Local Account
+  ID, owner and IAM-user sign-in, users, groups, memberships, built-in and
+  custom policies, first-login password changes, server-side action checks, and
+  an IAM audit log
 - Account settings for display-name changes and password updates
 - Compute instances as managed Python worker processes (not VMs), with health,
   logs, ports, and honest lifecycle states
@@ -30,6 +34,11 @@ verification.
 3. Controlled local web application deployment
 4. Local object storage with real filesystem objects
 5. Isolated local databases with a SQL editor
+
+IAM practical: register an owner, create an IAM user and a group, attach a
+policy, sign in as the IAM user, complete the forced password change, and
+verify that a read-only policy allows listing but returns HTTP 403 for writes.
+The full scenario is specified in `IDENTITY_AND_ACCESS_MANAGEMENT_UPGRADE.md`.
 
 ## Prerequisites
 
@@ -65,8 +74,11 @@ To run the services in separate terminals instead:
 .\scripts\run_tests.ps1
 ```
 
-This runs the isolated backend test suite and the frontend production build.
-See `tests/README.md` and `.agent/TEST_RESULTS.md` for details.
+This runs the isolated backend test suite, the frontend tests, and the frontend
+production build. As of 2026-11-19: 63 backend tests and 39 frontend tests
+pass, the production build succeeds, and `npm audit --audit-level=moderate`
+reports 0 vulnerabilities. See `tests/README.md` and
+`.agent/TEST_RESULTS.md` for details.
 
 ## Project layout
 

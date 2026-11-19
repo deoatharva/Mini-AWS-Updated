@@ -39,6 +39,13 @@ def get_db() -> Iterator[Session]:
 
 
 def init_db(bind: Engine | None = None) -> None:
-    """Create required data folders and metadata tables for the given engine."""
+    """Create data folders, upgrade legacy metadata, and seed built-in policies."""
+    from app.database.legacy_schema import run_legacy_migrations
+    from app.services.policy_service import seed_builtin_policies
+
+    target = bind or engine
     settings.ensure_data_dirs()
-    Base.metadata.create_all(bind=bind or engine)
+    Base.metadata.create_all(bind=target)
+    run_legacy_migrations(target)
+    with Session(bind=target) as db:
+        seed_builtin_policies(db)

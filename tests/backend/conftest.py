@@ -5,9 +5,18 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.core.login_throttle import login_throttle
 from app.database.base import Base
 from app.database.session import get_db
 from app.main import app
+from app.services.policy_service import seed_builtin_policies
+
+
+@pytest.fixture(autouse=True)
+def reset_login_throttle():
+    login_throttle.reset()
+    yield
+    login_throttle.reset()
 
 
 @pytest.fixture()
@@ -22,6 +31,8 @@ def session_factory(tmp_path) -> Iterator[sessionmaker]:
     factory = sessionmaker(
         bind=engine, autoflush=False, autocommit=False, expire_on_commit=False
     )
+    with factory() as db:
+        seed_builtin_policies(db)
     try:
         yield factory
     finally:

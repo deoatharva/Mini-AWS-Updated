@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 
+from app.core.permissions import account_owner_user_id
 from app.models.user import User
 from app.repositories import dashboard as dashboard_repo
 from app.schemas.common import as_utc
@@ -18,13 +19,14 @@ def get_dashboard(db: Session, user: User) -> DashboardOut:
     compute_service.list_instances(db, user)
     application_service.list_deployments(db, user)
 
-    compute_total, compute_running = dashboard_repo.compute_counts(db, user.id)
+    owner_id = account_owner_user_id(user)
+    compute_total, compute_running = dashboard_repo.compute_counts(db, owner_id)
     applications_total, applications_running = dashboard_repo.application_counts(
-        db, user.id
+        db, owner_id
     )
-    buckets_total = dashboard_repo.bucket_count(db, user.id)
-    objects_total, storage_bytes = dashboard_repo.object_totals(db, user.id)
-    databases_total = dashboard_repo.database_count(db, user.id)
+    buckets_total = dashboard_repo.bucket_count(db, owner_id)
+    objects_total, storage_bytes = dashboard_repo.object_totals(db, owner_id)
+    databases_total = dashboard_repo.database_count(db, owner_id)
 
     counts = DashboardCountsOut(
         compute_total=compute_total,
@@ -47,7 +49,7 @@ def get_dashboard(db: Session, user: User) -> DashboardOut:
             resource_name=event.resource_name,
             timestamp=as_utc(event.created_at),
         )
-        for event in activity_service.recent(db, user.id, ACTIVITY_LIMIT)
+        for event in activity_service.recent(db, owner_id, ACTIVITY_LIMIT)
     ]
 
     return DashboardOut(counts=counts, recent_activity=recent_activity)

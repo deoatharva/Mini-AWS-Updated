@@ -73,3 +73,36 @@
 - [x] Add password change with current-password verification.
 - [x] Revoke other sessions on password change while keeping the current one.
 - [x] Add backend/frontend tests and a live end-to-end check.
+
+## Phase 10 — IAM data model, migration, and authentication (complete)
+
+- [x] Add accounts, IAM users, groups, memberships, policy attachments, policies, and audit models.
+- [x] Add a lightweight SQLite migration/backfill for existing owner-only metadata and seed built-in policies.
+- [x] Generate unique 12-digit Local Account IDs and scope resources to the account owner.
+- [x] Add IAM login, mandatory first-login password change, account-aware sessions, and login throttling.
+- [x] Add backend tests for accounts, IAM login, disabled identities, forced password change, and persistence.
+
+## Phase 11 — IAM backend and authorization (complete)
+
+- [x] Implement IAM user, group, membership, policy, attachment, overview, and audit APIs.
+- [x] Centralize action identifiers and built-in policy documents in one backend registry.
+- [x] Enforce owner/bypass and IAM union-of-group-policies allow-list authorization on every endpoint.
+- [x] Enforce account isolation, duplicate prevention, owner safety, and self-escalation protection.
+- [x] Record required audit events without secrets and add positive/negative authorization tests.
+
+## Phase 12 — IAM frontend (complete)
+
+- [x] Add API client methods, account/permission-aware auth context, and mandatory password route guard.
+- [x] Add owner and IAM sign-in flows plus first-login password change.
+- [x] Add IAM overview, users, groups, policies, policy details, and audit pages.
+- [x] Add real create/edit/delete/reset/member/attach/detach actions and permission-aware navigation.
+- [x] Add frontend workflow tests with mocked network and verify the production build.
+- [x] Require confirmation before detaching a group policy; cancel keeps it attached.
+
+## Phase 13 — IAM end-to-end verification and documentation (complete)
+
+- [x] Run the complete Section 13 demonstration against a real uvicorn server and isolated data directory.
+- [x] Verify HTTP 403 denials, cross-account isolation, audit records, and restart persistence.
+- [x] Clean up workers and temporary data.
+- [x] Update all root and `.agent/` documentation with real results and limitations.
+- [x] Create and verify a backup of `data/mini_aws.db` before any migration is applied to real data (2026-11-19).

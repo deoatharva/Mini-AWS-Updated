@@ -6,8 +6,20 @@ from sqlalchemy.orm import Session
 from app.models.auth_session import AuthSession
 
 
-def create(db: Session, *, user_id: int, token_hash: str, expires_at: datetime) -> AuthSession:
-    session = AuthSession(user_id=user_id, token_hash=token_hash, expires_at=expires_at)
+def create(
+    db: Session,
+    *,
+    user_id: int,
+    account_id: int,
+    token_hash: str,
+    expires_at: datetime,
+) -> AuthSession:
+    session = AuthSession(
+        user_id=user_id,
+        account_id=account_id,
+        token_hash=token_hash,
+        expires_at=expires_at,
+    )
     db.add(session)
     db.flush()
     return session
@@ -40,4 +52,10 @@ def delete_expired_for_user(db: Session, user_id: int, now: datetime) -> None:
             AuthSession.user_id == user_id, AuthSession.expires_at <= now
         )
     )
+    db.flush()
+
+
+def delete_all_for_user(db: Session, user_id: int) -> None:
+    """Revoke every session after disablement, deletion, or password reset."""
+    db.execute(delete(AuthSession).where(AuthSession.user_id == user_id))
     db.flush()

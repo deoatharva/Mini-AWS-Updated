@@ -41,3 +41,30 @@
   (default 18000–18999), bound to `127.0.0.1` only.
 - Stop workers gracefully with a stop-request file, then terminate/kill only
   after the real process fails to exit within the timeout.
+
+## IAM decisions (2026-11-19)
+
+- Keep one SQLite metadata database. IAM tables are added to the existing
+  schema; no second backend or database was introduced.
+- Use a small explicit forward migration (`legacy_schema.py`) on top of
+  `create_all` to preserve owner-only databases. Each legacy user becomes the
+  owner of a new local account; resources keep pointing at that owner's user ID.
+- Store account resources against the account owner's user ID. IAM users in the
+  same account therefore work with shared account resources, while authorization
+  still decides which actions are allowed and ownership checks block other
+  accounts.
+- Use the union of policy `Allow` actions as the IAM permission model. No
+  wildcards, Deny precedence, conditions, or boundaries are claimed or
+  partially implemented.
+- Protect every API with `require_permission(action)` and keep the action list
+  in `action_registry.py`, so policy documents, UI descriptions, and endpoint
+  checks cannot drift apart.
+- Reuse bcrypt for password hashing and the existing opaque HMAC-hashed session
+  tokens. Do not add cookies/CSRF for this local bearer-token lab; document the
+  limitation instead.
+- Throttle logins in memory per identity key for the local single-process
+  deployment. The throttle is not a distributed rate limiter.
+- Record audit events with safe metadata only. Never store credentials, hashes,
+  tokens, or secrets.
+- Require an explicit confirmation before detaching a group policy; cancel is a
+  no-op and never calls the API.

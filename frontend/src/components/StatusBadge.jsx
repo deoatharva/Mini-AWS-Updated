@@ -4,6 +4,9 @@ const LABELS = {
   starting: 'Starting',
   stopping: 'Stopping',
   error: 'Error',
+  active: 'Active',
+  disabled: 'Disabled',
+  available: 'Available',
 };
 
 export function StatusBadge({ status }) {

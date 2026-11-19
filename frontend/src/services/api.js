@@ -161,11 +161,15 @@ export const api = {
       request('/auth/register', { method: 'POST', body: payload, auth: false }),
     login: (payload) =>
       request('/auth/login', { method: 'POST', body: payload, auth: false }),
+    iamLogin: (payload) =>
+      request('/auth/iam/login', { method: 'POST', body: payload, auth: false }),
     me: () => request('/auth/me'),
     updateProfile: (payload) =>
       request('/auth/me', { method: 'PATCH', body: payload }),
     changePassword: (payload) =>
       request('/auth/password', { method: 'POST', body: payload }),
+    changeRequiredPassword: (payload) =>
+      request('/auth/change-password', { method: 'POST', body: payload }),
     logout: () => request('/auth/logout', { method: 'POST' }),
   },
   compute: {
@@ -255,6 +259,98 @@ export const api = {
         method: 'POST',
         body: { sql },
       }),
+  },
+  iam: {
+    overview: () => request('/iam/overview'),
+    actions: () => request('/iam/actions'),
+    users: {
+      list: () => request('/iam/users'),
+      get: (userId) => request(`/iam/users/${encodeURIComponent(userId)}`),
+      create: (payload) =>
+        request('/iam/users', { method: 'POST', body: payload }),
+      update: (userId, payload) =>
+        request(`/iam/users/${encodeURIComponent(userId)}`, {
+          method: 'PATCH',
+          body: payload,
+        }),
+      resetPassword: (userId, payload) =>
+        request(`/iam/users/${encodeURIComponent(userId)}/reset-password`, {
+          method: 'POST',
+          body: payload,
+        }),
+      remove: (userId) =>
+        request(`/iam/users/${encodeURIComponent(userId)}`, {
+          method: 'DELETE',
+        }),
+    },
+    groups: {
+      list: () => request('/iam/groups'),
+      get: (groupId) => request(`/iam/groups/${encodeURIComponent(groupId)}`),
+      create: (payload) =>
+        request('/iam/groups', { method: 'POST', body: payload }),
+      update: (groupId, payload) =>
+        request(`/iam/groups/${encodeURIComponent(groupId)}`, {
+          method: 'PATCH',
+          body: payload,
+        }),
+      remove: (groupId) =>
+        request(`/iam/groups/${encodeURIComponent(groupId)}`, {
+          method: 'DELETE',
+        }),
+      addUsers: (groupId, userIds) =>
+        request(`/iam/groups/${encodeURIComponent(groupId)}/users`, {
+          method: 'POST',
+          body: { user_ids: userIds },
+        }),
+      removeUser: (groupId, userId) =>
+        request(
+          `/iam/groups/${encodeURIComponent(groupId)}/users/${encodeURIComponent(userId)}`,
+          { method: 'DELETE' },
+        ),
+      attachPolicies: (groupId, policyIds) =>
+        request(`/iam/groups/${encodeURIComponent(groupId)}/policies`, {
+          method: 'POST',
+          body: { policy_ids: policyIds },
+        }),
+      detachPolicy: (groupId, policyId) =>
+        request(
+          `/iam/groups/${encodeURIComponent(groupId)}/policies/${encodeURIComponent(policyId)}`,
+          { method: 'DELETE' },
+        ),
+    },
+    policies: {
+      list: () => request('/iam/policies'),
+      get: (policyId) =>
+        request(`/iam/policies/${encodeURIComponent(policyId)}`),
+      create: (payload) =>
+        request('/iam/policies', { method: 'POST', body: payload }),
+      update: (policyId, payload) =>
+        request(`/iam/policies/${encodeURIComponent(policyId)}`, {
+          method: 'PATCH',
+          body: payload,
+        }),
+      remove: (policyId) =>
+        request(`/iam/policies/${encodeURIComponent(policyId)}`, {
+          method: 'DELETE',
+        }),
+    },
+    auditLogs: (filters = {}) => {
+      const params = new URLSearchParams();
+      if (filters.q) {
+        params.set('q', filters.q);
+      }
+      if (filters.event_type) {
+        params.set('event_type', filters.event_type);
+      }
+      if (filters.success !== '' && filters.success !== undefined) {
+        params.set('success', String(filters.success));
+      }
+      if (filters.limit) {
+        params.set('limit', String(filters.limit));
+      }
+      const query = params.toString();
+      return request(`/iam/audit-logs${query ? `?${query}` : ''}`);
+    },
   },
   health: () => request('/health', { auth: false }),
 };

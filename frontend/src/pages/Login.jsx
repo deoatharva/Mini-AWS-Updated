@@ -93,6 +93,10 @@ export default function Login() {
         <p className="auth-foot">
           New to Mini AWS? <Link to="/register">Create a local account</Link>
         </p>
+        <p className="auth-foot auth-foot-alt">
+          Signed in with an IAM identity?{' '}
+          <Link to="/login/iam" state={location.state}>IAM user sign in</Link>
+        </p>
         <p className="auth-note">
           Accounts and resources stay on this computer. No AWS credentials or
           cloud charges are involved.

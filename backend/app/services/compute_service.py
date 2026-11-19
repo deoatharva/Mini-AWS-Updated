@@ -15,7 +15,7 @@ from app.core.exceptions import (
     NotFoundError,
     ServiceUnavailableError,
 )
-from app.core.permissions import ensure_owner
+from app.core.permissions import account_owner_user_id, ensure_owner
 from app.models.compute_instance import ComputeInstance
 from app.models.user import User
 from app.repositories import compute_instances as instance_repo
@@ -143,7 +143,7 @@ def _refresh_instance(
 
 def list_instances(db: Session, user: User) -> list[ComputeInstance]:
     adapter = _adapter()
-    instances = instance_repo.list_by_user(db, user.id)
+    instances = instance_repo.list_by_user(db, account_owner_user_id(user))
     changed = False
     for instance in instances:
         if _refresh_instance(db, instance, adapter):
@@ -163,10 +163,12 @@ def get_instance(db: Session, user: User, instance_id: int) -> ComputeInstance:
 def create_instance(
     db: Session, user: User, payload: CreateInstanceRequest
 ) -> ComputeInstance:
-    instance = instance_repo.create(db, user_id=user.id, name=payload.name)
+    instance = instance_repo.create(
+        db, user_id=account_owner_user_id(user), name=payload.name
+    )
     activity_service.record(
         db,
-        user_id=user.id,
+        user_id=account_owner_user_id(user),
         service="compute",
         action="created",
         resource_type="compute_instance",
@@ -208,7 +210,7 @@ def start_instance(db: Session, user: User, instance_id: int) -> ComputeInstance
         _mark_error(instance, str(exc))
         activity_service.record(
             db,
-            user_id=user.id,
+            user_id=account_owner_user_id(user),
             service="compute",
             action="failed",
             resource_type="compute_instance",
@@ -224,7 +226,7 @@ def start_instance(db: Session, user: User, instance_id: int) -> ComputeInstance
         _mark_error(instance, "An unexpected error occurred while starting the worker.")
         activity_service.record(
             db,
-            user_id=user.id,
+            user_id=account_owner_user_id(user),
             service="compute",
             action="failed",
             resource_type="compute_instance",
@@ -245,7 +247,7 @@ def start_instance(db: Session, user: User, instance_id: int) -> ComputeInstance
     instance.updated_at = utcnow()
     activity_service.record(
         db,
-        user_id=user.id,
+        user_id=account_owner_user_id(user),
         service="compute",
         action="started",
         resource_type="compute_instance",
@@ -280,7 +282,7 @@ def stop_instance(db: Session, user: User, instance_id: int) -> ComputeInstance:
         _mark_stopped(instance)
         activity_service.record(
             db,
-            user_id=user.id,
+            user_id=account_owner_user_id(user),
             service="compute",
             action="stopped",
             resource_type="compute_instance",
@@ -294,7 +296,7 @@ def stop_instance(db: Session, user: User, instance_id: int) -> ComputeInstance:
     _mark_error(instance, "The local worker did not stop within the timeout.")
     activity_service.record(
         db,
-        user_id=user.id,
+        user_id=account_owner_user_id(user),
         service="compute",
         action="failed",
         resource_type="compute_instance",
@@ -342,7 +344,7 @@ def delete_instance(db: Session, user: User, instance_id: int) -> None:
 
     activity_service.record(
         db,
-        user_id=user.id,
+        user_id=account_owner_user_id(user),
         service="compute",
         action="deleted",
         resource_type="compute_instance",

@@ -19,7 +19,7 @@ from app.core.exceptions import (
     NotFoundError,
     ValidationError,
 )
-from app.core.permissions import ensure_owner
+from app.core.permissions import account_owner_user_id, ensure_owner
 from app.models.storage import Bucket, StorageObject
 from app.models.user import User
 from app.repositories import buckets as bucket_repo
@@ -110,17 +110,19 @@ def _safe_content_type(value: str | None) -> str:
 
 
 def list_buckets(db: Session, user: User) -> list[BucketOut]:
-    usage = bucket_repo.usage_by_bucket(db, user.id)
+    owner_id = account_owner_user_id(user)
+    usage = bucket_repo.usage_by_bucket(db, owner_id)
     return [
         _bucket_out(bucket, *usage.get(bucket.id, (0, 0)))
-        for bucket in bucket_repo.list_by_user(db, user.id)
+        for bucket in bucket_repo.list_by_user(db, owner_id)
     ]
 
 
 def create_bucket(
     db: Session, user: User, payload: CreateBucketRequest
 ) -> BucketOut:
-    if bucket_repo.get_by_name(db, user.id, payload.name) is not None:
+    owner_id = account_owner_user_id(user)
+    if bucket_repo.get_by_name(db, owner_id, payload.name) is not None:
         raise ConflictError(
             "bucket_already_exists",
             "A bucket with that name already exists in your account.",
@@ -129,11 +131,11 @@ def create_bucket(
     adapter = _adapter()
     bucket: Bucket | None = None
     try:
-        bucket = bucket_repo.create(db, user_id=user.id, name=payload.name)
-        adapter.ensure_bucket_directory(user.id, bucket.id)
+        bucket = bucket_repo.create(db, user_id=owner_id, name=payload.name)
+        adapter.ensure_bucket_directory(owner_id, bucket.id)
         activity_service.record(
             db,
-            user_id=user.id,
+            user_id=owner_id,
             service="storage",
             action="created",
             resource_type="bucket",
@@ -145,7 +147,7 @@ def create_bucket(
     except IntegrityError as exc:
         db.rollback()
         if bucket is not None:
-            adapter.remove_bucket_directory(user.id, bucket.id)
+            adapter.remove_bucket_directory(owner_id, bucket.id)
         raise ConflictError(
             "bucket_already_exists",
             "A bucket with that name already exists in your account.",
@@ -154,7 +156,7 @@ def create_bucket(
         db.rollback()
         if bucket is not None:
             try:
-                adapter.remove_bucket_directory(user.id, bucket.id)
+                adapter.remove_bucket_directory(owner_id, bucket.id)
             except StorageAdapterError:
                 pass
         logger.exception("Could not create the bucket directory")
@@ -178,7 +180,7 @@ def delete_bucket(db: Session, user: User, bucket_id: int) -> None:
 
     adapter = _adapter()
     try:
-        adapter.remove_bucket_directory(user.id, bucket.id)
+        adapter.remove_bucket_directory(bucket.user_id, bucket.id)
     except StorageAdapterError as exc:
         logger.exception("Could not remove bucket directory %s", bucket.id)
         raise AppError(
@@ -190,7 +192,7 @@ def delete_bucket(db: Session, user: User, bucket_id: int) -> None:
     try:
         activity_service.record(
             db,
-            user_id=user.id,
+            user_id=bucket.user_id,
             service="storage",
             action="deleted",
             resource_type="bucket",
@@ -202,7 +204,7 @@ def delete_bucket(db: Session, user: User, bucket_id: int) -> None:
     except Exception:
         db.rollback()
         try:
-            adapter.ensure_bucket_directory(user.id, bucket.id)
+            adapter.ensure_bucket_directory(bucket.user_id, bucket.id)
         except StorageAdapterError:
             logger.exception("Could not restore bucket directory %s", bucket.id)
         raise
@@ -225,7 +227,7 @@ def upload_object(
     storage_name = uuid4().hex
     adapter = _adapter()
     try:
-        bucket_dir = adapter.ensure_bucket_directory(user.id, bucket.id)
+        bucket_dir = adapter.ensure_bucket_directory(bucket.user_id, bucket.id)
         size_bytes, etag = adapter.save_upload(
             bucket_dir,
             upload_file,
@@ -269,7 +271,7 @@ def upload_object(
             )
         activity_service.record(
             db,
-            user_id=user.id,
+            user_id=bucket.user_id,
             service="storage",
             action="uploaded",
             resource_type="object",
@@ -308,7 +310,7 @@ def get_object_file(
     adapter = _adapter()
     try:
         path = adapter.object_path(
-            adapter.bucket_directory(user.id, bucket.id),
+            adapter.bucket_directory(bucket.user_id, bucket.id),
             storage_object.storage_name,
         )
     except StorageAdapterError as exc:
@@ -335,10 +337,10 @@ def delete_object(
 
     storage_name = storage_object.storage_name
     object_key = storage_object.object_key
-    bucket_dir = _adapter().bucket_directory(user.id, bucket.id)
+    bucket_dir = _adapter().bucket_directory(bucket.user_id, bucket.id)
     activity_service.record(
         db,
-        user_id=user.id,
+        user_id=bucket.user_id,
         service="storage",
         action="deleted",
         resource_type="object",

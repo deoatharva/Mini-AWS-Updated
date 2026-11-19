@@ -12,7 +12,7 @@ from app.core.exceptions import (
     NotFoundError,
     ServiceUnavailableError,
 )
-from app.core.permissions import ensure_owner
+from app.core.permissions import account_owner_user_id, ensure_owner
 from app.models.application_deployment import ApplicationDeployment
 from app.models.user import User
 from app.repositories import application_deployments as deployment_repo
@@ -142,7 +142,7 @@ def _refresh_deployment(
 
 def list_deployments(db: Session, user: User) -> list[ApplicationDeployment]:
     adapter = _adapter()
-    deployments = deployment_repo.list_by_user(db, user.id)
+    deployments = deployment_repo.list_by_user(db, account_owner_user_id(user))
     changed = False
     for deployment in deployments:
         if _refresh_deployment(deployment, adapter):
@@ -164,10 +164,12 @@ def get_deployment(
 def create_deployment(
     db: Session, user: User, payload: CreateApplicationRequest
 ) -> ApplicationDeployment:
-    deployment = deployment_repo.create(db, user_id=user.id, name=payload.name)
+    deployment = deployment_repo.create(
+        db, user_id=account_owner_user_id(user), name=payload.name
+    )
     activity_service.record(
         db,
-        user_id=user.id,
+        user_id=account_owner_user_id(user),
         service="applications",
         action="deployed",
         resource_type="application",
@@ -210,7 +212,7 @@ def start_deployment(
         _mark_error(deployment, str(exc))
         activity_service.record(
             db,
-            user_id=user.id,
+            user_id=account_owner_user_id(user),
             service="applications",
             action="failed",
             resource_type="application",
@@ -229,7 +231,7 @@ def start_deployment(
         _mark_error(deployment, "An unexpected error occurred while starting the app.")
         activity_service.record(
             db,
-            user_id=user.id,
+            user_id=account_owner_user_id(user),
             service="applications",
             action="failed",
             resource_type="application",
@@ -250,7 +252,7 @@ def start_deployment(
     deployment.updated_at = utcnow()
     activity_service.record(
         db,
-        user_id=user.id,
+        user_id=account_owner_user_id(user),
         service="applications",
         action="started",
         resource_type="application",
@@ -289,7 +291,7 @@ def stop_deployment(
         _mark_stopped(deployment)
         activity_service.record(
             db,
-            user_id=user.id,
+            user_id=account_owner_user_id(user),
             service="applications",
             action="stopped",
             resource_type="application",
@@ -303,7 +305,7 @@ def stop_deployment(
     _mark_error(deployment, "The deployed app did not stop within the timeout.")
     activity_service.record(
         db,
-        user_id=user.id,
+        user_id=account_owner_user_id(user),
         service="applications",
         action="failed",
         resource_type="application",
@@ -353,7 +355,7 @@ def delete_deployment(db: Session, user: User, deployment_id: int) -> None:
 
     activity_service.record(
         db,
-        user_id=user.id,
+        user_id=account_owner_user_id(user),
         service="applications",
         action="deleted",
         resource_type="application",

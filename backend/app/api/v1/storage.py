@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, File, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from app.core.authorization import require_permission
 from app.database.session import get_db
-from app.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.storage import (
     BucketOut,
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/storage/buckets", tags=["storage"])
 
 @router.get("", response_model=list[BucketOut])
 def list_buckets(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("storage:ListBuckets")),
     db: Session = Depends(get_db),
 ) -> list[BucketOut]:
     return storage_service.list_buckets(db, current_user)
@@ -26,7 +26,7 @@ def list_buckets(
 @router.post("", response_model=BucketOut, status_code=status.HTTP_201_CREATED)
 def create_bucket(
     payload: CreateBucketRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("storage:CreateBucket")),
     db: Session = Depends(get_db),
 ) -> BucketOut:
     return storage_service.create_bucket(db, current_user, payload)
@@ -35,7 +35,7 @@ def create_bucket(
 @router.delete("/{bucket_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_bucket(
     bucket_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("storage:DeleteBucket")),
     db: Session = Depends(get_db),
 ) -> Response:
     storage_service.delete_bucket(db, current_user, bucket_id)
@@ -45,7 +45,7 @@ def delete_bucket(
 @router.get("/{bucket_id}/objects", response_model=list[StorageObjectOut])
 def list_objects(
     bucket_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("storage:ListObjects")),
     db: Session = Depends(get_db),
 ) -> list[StorageObjectOut]:
     objects = storage_service.list_objects(db, current_user, bucket_id)
@@ -60,7 +60,7 @@ def list_objects(
 def upload_object(
     bucket_id: int,
     upload_file: UploadFile = File(..., alias="file"),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("storage:UploadObject")),
     db: Session = Depends(get_db),
 ) -> StorageObjectOut:
     storage_object = storage_service.upload_object(
@@ -73,7 +73,7 @@ def upload_object(
 def download_object(
     bucket_id: int,
     object_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("storage:DownloadObject")),
     db: Session = Depends(get_db),
 ) -> FileResponse:
     storage_object, path = storage_service.get_object_file(
@@ -94,7 +94,7 @@ def download_object(
 def delete_object(
     bucket_id: int,
     object_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("storage:DeleteObject")),
     db: Session = Depends(get_db),
 ) -> Response:
     storage_service.delete_object(db, current_user, bucket_id, object_id)

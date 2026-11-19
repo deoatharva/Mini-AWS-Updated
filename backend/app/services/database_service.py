@@ -10,7 +10,7 @@ from app.adapters.databases.sqlite_adapter import (
 )
 from app.config import settings
 from app.core.exceptions import AppError, ConflictError, NotFoundError, ValidationError
-from app.core.permissions import ensure_owner
+from app.core.permissions import account_owner_user_id, ensure_owner
 from app.models.database_resource import DatabaseResource
 from app.models.user import User
 from app.repositories import databases as database_repo
@@ -70,14 +70,15 @@ def _summary(resource: DatabaseResource) -> DatabaseOut:
 def list_databases(db: Session, user: User) -> list[DatabaseOut]:
     return [
         _summary(resource)
-        for resource in database_repo.list_by_user(db, user.id)
+        for resource in database_repo.list_by_user(db, account_owner_user_id(user))
     ]
 
 
 def create_database(
     db: Session, user: User, payload: CreateDatabaseRequest
 ) -> DatabaseOut:
-    if database_repo.get_by_name(db, user.id, payload.name) is not None:
+    owner_id = account_owner_user_id(user)
+    if database_repo.get_by_name(db, owner_id, payload.name) is not None:
         raise ConflictError(
             "database_already_exists",
             "A database with that name already exists in your account.",
@@ -86,11 +87,11 @@ def create_database(
     adapter = _adapter()
     resource: DatabaseResource | None = None
     try:
-        resource = database_repo.create(db, user_id=user.id, name=payload.name)
-        adapter.create_database(user.id, resource.id)
+        resource = database_repo.create(db, user_id=owner_id, name=payload.name)
+        adapter.create_database(owner_id, resource.id)
         activity_service.record(
             db,
-            user_id=user.id,
+            user_id=owner_id,
             service="databases",
             action="created",
             resource_type="database",
@@ -103,7 +104,7 @@ def create_database(
         db.rollback()
         if resource is not None:
             try:
-                adapter.delete_database(user.id, resource.id)
+                adapter.delete_database(owner_id, resource.id)
             except DatabaseAdapterError:
                 pass
         raise ConflictError(
@@ -114,7 +115,7 @@ def create_database(
         db.rollback()
         if resource is not None:
             try:
-                adapter.delete_database(user.id, resource.id)
+                adapter.delete_database(owner_id, resource.id)
             except DatabaseAdapterError:
                 pass
         logger.exception("Could not create the local database file")
@@ -132,7 +133,7 @@ def delete_database(db: Session, user: User, database_id: int) -> None:
     user_id = resource.user_id
     activity_service.record(
         db,
-        user_id=user.id,
+        user_id=resource.user_id,
         service="databases",
         action="deleted",
         resource_type="database",

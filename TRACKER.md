@@ -37,6 +37,27 @@
 - [x] End-to-end practicals 11–15 walkthrough
   - 30 live checks passed across accounts, compute, deployment, storage,
     databases, and dashboard cleanup on a real uvicorn server.
+- [x] Identity & Access Management (IAM-001)
+  - Local accounts with unique 12-digit Local Account IDs, owner identities,
+    and account-scoped IAM users (`OWNER`/`IAM`, status, console access,
+    forced password change, last login).
+  - Owner and IAM sign-in flows, generic authentication errors, login
+    throttling, session revocation, and mandatory first-login password change.
+  - Groups, memberships, built-in and validated custom policies, and group
+    policy attachments with duplicate prevention and safe deletion.
+  - Central action registry and `require_permission` enforcement on every API;
+    deny-by-default IAM authorization, HTTP 403 denials, account isolation,
+    owner safety, and self-escalation protection.
+  - IAM overview, users, groups, policies, policy details, audit log, IAM login,
+    and mandatory password-change pages connected to the real API.
+  - Audit log for identity, group, membership, policy, and sign-in events with
+    no passwords, hashes, tokens, or secrets recorded.
+  - In-place forward migration/backfill preserves existing owner-only databases.
+  - Backend suite as of 2026-11-19: 63 tests pass; frontend: 39 tests pass;
+    production build and `npm audit --audit-level=moderate` are clean.
+  - The Section 13 real-server demonstration passed in the prior verification
+    session; it was not rerun during the documentation-only session because no
+    backend behavior changed.
 
 ## Optional / future
 
@@ -44,6 +65,11 @@
   - Only relevant if VirtualBox is installed; process compute is the default.
 - [ ] Multi-user hardening beyond the local learning scope
   - The project is intentionally local-only and not production multi-tenant.
+- [ ] Full AWS IAM semantics
+  - Wildcards, explicit Deny precedence, conditions, permission boundaries,
+    federated identities, and MFA are intentionally not implemented.
+- [ ] Cookie-based sessions with CSRF protection
+  - The local lab keeps the bearer token in `localStorage`; not for public use.
 
 ## Notes
 
